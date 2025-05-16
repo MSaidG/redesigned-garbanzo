@@ -1,5 +1,4 @@
 from sklearn.discriminant_analysis import StandardScaler
-from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier
 import streamlit as st
@@ -8,33 +7,9 @@ import pandas as pd
 from st_aggrid import AgGrid, GridOptionsBuilder
 import pandas as pd
 import joblib
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
 
-
-# Veri yükleme ve ön işleme (önbelleğe alınmış)
-@st.cache_data
-def load_and_preprocess_data():
-    diabetes_data_copy = pd.read_csv("diabetes.csv")  # Verinizi yükleyin
-    X = diabetes_data_copy.drop(["Outcome"], axis=1)
-    y = diabetes_data_copy["Outcome"]
-    return X, y
-
-X, y = load_and_preprocess_data()
-
-# Model eğitimi (önbelleğe alınmış)
-@st.cache_resource
-def train_model():
-    scaler = StandardScaler()
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-    
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-    
-    mlp = MLPClassifier(hidden_layer_sizes=(50, 50), max_iter=5000, random_state=42)
-    mlp.fit(X_train_scaled, y_train)
-    
-    return mlp, scaler, X_test_scaled, y_test
-
-model, scaler, X_test, y_test = train_model()
 
 # Load CSV data
 @st.cache_data  # Cache to avoid reloading on every interaction
@@ -43,9 +18,13 @@ def load_data():
   
 # Modeli yükle
 @st.cache_resource
-def load_model():
-    return joblib.load("lr_lda_model.pkl")
+def load_bayes_pca_model():
+    return joblib.load("bayes_pca_model.pkl")
 
+
+@st.cache_resource
+def load_lr_model():
+    return joblib.load("lr_model.pkl")
 
 df = load_data()
 data = pd.DataFrame(df)
@@ -64,52 +43,61 @@ grid_response = AgGrid(
     gridOptions=grid_options,
     enable_enterprise_modules=False,
 )
+st.write(df['Outcome'].value_counts())
 
 # Streamlit UI
 st.title("ML Model Deployment")
 st.write("Enter features below:")
 
-# Check selected rows
+col1, col2 = st.columns(2)
+
 selected_rows = grid_response["selected_rows"]
+# Check selected rows
 if selected_rows is not None and not selected_rows.empty:
+  with col1:
     pregnancies = st.number_input("Pregnancies", value=selected_rows.iloc[0]["Pregnancies"])  
     glucose = st.number_input("Glucose", value=selected_rows.iloc[0]["Glucose"])  
     blood_pressure = st.number_input("Blood Pressure", value=selected_rows.iloc[0]["BloodPressure"])  
-    skin_thickness = st.number_input("Skin Thickness(mm)", value=selected_rows.iloc[0]["SkinThickness"])  
+    skin_thickness = st.number_input("Skin Thickness(mm)", value=selected_rows.iloc[0]["SkinThickness"]) 
+  with col2:
     insulin = st.number_input("Insulin(mu U/ml)", value=selected_rows.iloc[0]["Insulin"]) 
     bmi = st.number_input("BMI", value=selected_rows.iloc[0]["BMI"])  
     diabetes_pedigree_function = st.number_input("Diabetes Pedigree Function", value=selected_rows.iloc[0]["DiabetesPedigreeFunction"])  
     age = st.number_input("Age", value=selected_rows.iloc[0]["Age"])  
 else:
+  with col1:
     pregnancies = st.number_input("Pregnancies", value=0)
     glucose = st.number_input("Glucose", value=0)
     blood_pressure = st.number_input("Blood Pressure", value=0)
     skin_thickness = st.number_input("Skin Thickness(mm)", value=0)
+  with col2:
     insulin = st.number_input("Insulin(mu U/ml)", value=0)
     bmi = st.number_input("BMI", value=0)
     diabetes_pedigree_function = st.number_input("Diabetes Pedigree Function", value=0)
     age = st.number_input("Age", value=0)
 
 # Load the model
-model = load_model()
+bayes_pca_model = load_bayes_pca_model()
+lr_model = load_lr_model()
 lda = joblib.load("lda.pkl")
+pca = joblib.load("pca.pkl")
 scaler = joblib.load("scaler.pkl")
 
 features = [pregnancies, glucose, blood_pressure, skin_thickness, insulin, bmi, diabetes_pedigree_function, age]
 
-# st.write("Veri Dağılımı:", df["Outcome"].value_counts())
-print(df['Outcome'].value_counts())
 if st.button("Predict"):
 
     input_array = np.array(features).reshape(1, -1) # Shape: 1, 8
     input_scaled = scaler.transform(input_array) 
-    input_lda = lda.transform(input_scaled)
+    input_pca = pca.transform(input_scaled)
     
-    prediction = model.predict(input_lda)
-    st.success(f"Prediction: {prediction[0]}")
-    prediction_proba = model.predict_proba(input_lda)
+    bayes_pca_prediction = bayes_pca_model.predict(input_pca)
+    st.success(f"Bayes PCA Tahmin: {bayes_pca_prediction[0]}")
+    bayes_pca_prediction_proba = bayes_pca_model.predict_proba(input_pca)
     
-    
+    lr_prediction = lr_model.predict(input_scaled)
+    st.success(f"Logistic Regression Tahmin: {lr_prediction[0]}")
+    lr_prediction_proba = lr_model.predict_proba(input_scaled)
     
     
     
@@ -144,11 +132,20 @@ if st.button("Predict"):
     # prediction_proba = model.predict_proba(input_scaled)
     
     # Sonuçları gösterme
-    st.subheader("Tahmin Sonucu")
-    if prediction[0] == 1:
-        st.error(f"🚨 Diyabet Riski Yüksek (%{prediction_proba[0][1]*100:.1f} olasılık)")
+    st.subheader("Bayes PCA Tahmin Sonucu")
+    if bayes_pca_prediction[0] == 1:
+        st.error(f"🚨 Diyabet Riski Yüksek (%{bayes_pca_prediction_proba[0][1]*100:.1f} olasılık)")
     else:
-        st.success(f"✅ Diyabet Riski Düşük (%{prediction_proba[0][0]*100:.1f} olasılık)")
+        st.success(f"✅ Diyabet Riski Düşük (%{bayes_pca_prediction_proba[0][0]*100:.1f} olasılık)")
     
     # Olasılık çubuğu
-    st.progress(prediction_proba[0][1])
+    st.progress(bayes_pca_prediction_proba[0][1])
+    
+    st.subheader("Logistic Regression Tahmin Sonucu")
+    if lr_prediction[0] == 1:
+        st.error(f"🚨 Diyabet Riski Yüksek (%{lr_prediction_proba[0][1]*100:.1f} olasılık)")
+    else:
+        st.success(f"✅ Diyabet Riski Düşük (%{lr_prediction_proba[0][0]*100:.1f} olasılık)")
+    
+    # Olasılık çubuğu
+    st.progress(lr_prediction_proba[0][1])
