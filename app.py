@@ -80,6 +80,8 @@ if selected_rows is not None and not selected_rows.empty:
     bmi = st.number_input("BMI", value=selected_rows.iloc[0]["BMI"])  
     diabetes_pedigree_function = st.number_input("Diabetes Pedigree Function", value=selected_rows.iloc[0]["DiabetesPedigreeFunction"])  
     age = st.number_input("Age", value=selected_rows.iloc[0]["Age"])  
+  with st.sidebar:
+      st.header("RESULTS")
 else:
   with col1:
     pregnancies = st.number_input("Pregnancies", value=0)
@@ -91,7 +93,8 @@ else:
     bmi = st.number_input("BMI", value=0)
     diabetes_pedigree_function = st.number_input("Diabetes Pedigree Function", value=0)
     age = st.number_input("Age", value=0)
-
+  with st.sidebar:
+      st.header("RESULTS")
 # Load the model
 bayes_pca_model = load_bayes_pca_model()
 lr_model = load_lr_model()
@@ -123,35 +126,6 @@ if st.button("Predict"):
       # st.success(f"Logistic Regression SMOTE Tahmin: {best_prediction[0]}")
       best_prediction_proba = best_lr_smote_model.predict_proba(input_array)
       
-      # # Girdileri düzenle
-      # input_data = np.array([[pregnancies, glucose, blood_pressure, skin_thickness, insulin, bmi, diabetes_pedigree_function, age]])
-      
-      # st.write(input_data)
-      # # Tahmin yap
-      # prediction = model.predict(input_scaled)
-      # prediction_proba = model.predict_proba(input_scaled)
-      
-      # # Sonuçları göster
-      # if prediction[0] == 1:
-      #     st.error(f"Tahmin: DİYABET (Olasılık: %{prediction_proba[0][1]*100:.2f})")
-      # else:
-      #     st.success(f"Tahmin: DİYABET DEĞİL (Olasılık: %{prediction_proba[0][0]*100:.2f})")
-          
-      #     # Modelin rastgele bir örnekteki davranışını test edin
-      # test_sample = np.array([[1, 90, 70, 25, 80, 22, 0.3, 25]])  # Açıkça negatif bir örnek
-      # print(model.predict(test_sample))  # 0 vermeli!
-
-
-
-
-
-      # # Ölçeklendirme
-      # input_array = np.array(features).reshape(1, -1) # Shape: 1, 8
-      # input_scaled = scaler.transform(input_array)
-      
-      # # Tahmin
-      # prediction = model.predict(input_scaled)
-      # prediction_proba = model.predict_proba(input_scaled)
       
       # Sonuçları gösterme
       st.subheader("Bayes PCA Tahmin Sonucu")
