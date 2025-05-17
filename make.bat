@@ -1,4 +1,6 @@
 @echo off
+echo Creating Python environment "myenv"...
+python -m venv myenv
 
 :: Activate the virtual environment
 call "myenv\Scripts\activate"
@@ -10,6 +12,21 @@ if errorlevel 1 (
     exit /b
 )
 echo Virtual environment activated successfully
+
+
+echo Installing pip upgrades...
+python -m pip install --upgrade pip
+
+echo Environment ready!
+
+echo Installing packages from requirements.txt...
+pip install -r requirements.txt
+
+if errorlevel 1 (
+    echo Failed to install some packages. Check requirements.txt.
+) else (
+    echo All packages installed successfully!
+)
 
 
 echo Running Streamlit app...

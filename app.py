@@ -25,6 +25,22 @@ def load_bayes_pca_model():
 @st.cache_resource
 def load_lr_model():
     return joblib.load("lr_model.pkl")
+  
+@st.cache_resource
+def load_best_lr_smote_model():
+    return joblib.load("best_lr_smote_model.pkl")
+  
+@st.cache_resource
+def load_lda():
+    return joblib.load("lda.pkl")
+  
+@st.cache_resource
+def load_pca():
+    return joblib.load("pca.pkl")
+  
+@st.cache_resource
+def load_scaler():
+    return joblib.load("scaler.pkl")
 
 df = load_data()
 data = pd.DataFrame(df)
@@ -36,18 +52,18 @@ gb.configure_default_column(
     wrapHeaderText=True,  # Başlık metnini kaydır
     autoHeaderHeight=True  # Başlık yüksekliğini otomatik ayarla
 )
+
 grid_options = gb.build()
 
 grid_response = AgGrid(
     data,
     gridOptions=grid_options,
     enable_enterprise_modules=False,
+    height=300,
+    key="sidebar_table",
 )
-st.write(df['Outcome'].value_counts())
 
-# Streamlit UI
-st.title("ML Model Deployment")
-st.write("Enter features below:")
+
 
 col1, col2 = st.columns(2)
 
@@ -79,9 +95,10 @@ else:
 # Load the model
 bayes_pca_model = load_bayes_pca_model()
 lr_model = load_lr_model()
-lda = joblib.load("lda.pkl")
-pca = joblib.load("pca.pkl")
-scaler = joblib.load("scaler.pkl")
+best_lr_smote_model = load_best_lr_smote_model()
+lda = load_lda()
+pca = load_pca()
+scaler = load_scaler()
 
 features = [pregnancies, glucose, blood_pressure, skin_thickness, insulin, bmi, diabetes_pedigree_function, age]
 
@@ -92,60 +109,70 @@ if st.button("Predict"):
     input_pca = pca.transform(input_scaled)
     
     bayes_pca_prediction = bayes_pca_model.predict(input_pca)
-    st.success(f"Bayes PCA Tahmin: {bayes_pca_prediction[0]}")
-    bayes_pca_prediction_proba = bayes_pca_model.predict_proba(input_pca)
     
-    lr_prediction = lr_model.predict(input_scaled)
-    st.success(f"Logistic Regression Tahmin: {lr_prediction[0]}")
-    lr_prediction_proba = lr_model.predict_proba(input_scaled)
-    
-    
-    
-    # # Girdileri düzenle
-    # input_data = np.array([[pregnancies, glucose, blood_pressure, skin_thickness, insulin, bmi, diabetes_pedigree_function, age]])
-    
-    # st.write(input_data)
-    # # Tahmin yap
-    # prediction = model.predict(input_scaled)
-    # prediction_proba = model.predict_proba(input_scaled)
-    
-    # # Sonuçları göster
-    # if prediction[0] == 1:
-    #     st.error(f"Tahmin: DİYABET (Olasılık: %{prediction_proba[0][1]*100:.2f})")
-    # else:
-    #     st.success(f"Tahmin: DİYABET DEĞİL (Olasılık: %{prediction_proba[0][0]*100:.2f})")
-        
-    #     # Modelin rastgele bir örnekteki davranışını test edin
-    # test_sample = np.array([[1, 90, 70, 25, 80, 22, 0.3, 25]])  # Açıkça negatif bir örnek
-    # print(model.predict(test_sample))  # 0 vermeli!
+    with st.sidebar:
+      st.header("RESULTS")
+      # st.success(f"Bayes PCA Tahmin: {bayes_pca_prediction[0]}")
+      bayes_pca_prediction_proba = bayes_pca_model.predict_proba(input_pca)
+      
+      lr_prediction = lr_model.predict(input_scaled)
+      # st.success(f"Logistic Regression Tahmin: {lr_prediction[0]}")
+      lr_prediction_proba = lr_model.predict_proba(input_scaled)
+      
+      best_prediction = best_lr_smote_model.predict(input_array)
+      # st.success(f"Logistic Regression SMOTE Tahmin: {best_prediction[0]}")
+      best_prediction_proba = best_lr_smote_model.predict_proba(input_array)
+      
+      # # Girdileri düzenle
+      # input_data = np.array([[pregnancies, glucose, blood_pressure, skin_thickness, insulin, bmi, diabetes_pedigree_function, age]])
+      
+      # st.write(input_data)
+      # # Tahmin yap
+      # prediction = model.predict(input_scaled)
+      # prediction_proba = model.predict_proba(input_scaled)
+      
+      # # Sonuçları göster
+      # if prediction[0] == 1:
+      #     st.error(f"Tahmin: DİYABET (Olasılık: %{prediction_proba[0][1]*100:.2f})")
+      # else:
+      #     st.success(f"Tahmin: DİYABET DEĞİL (Olasılık: %{prediction_proba[0][0]*100:.2f})")
+          
+      #     # Modelin rastgele bir örnekteki davranışını test edin
+      # test_sample = np.array([[1, 90, 70, 25, 80, 22, 0.3, 25]])  # Açıkça negatif bir örnek
+      # print(model.predict(test_sample))  # 0 vermeli!
 
 
 
 
 
-    # # Ölçeklendirme
-    # input_array = np.array(features).reshape(1, -1) # Shape: 1, 8
-    # input_scaled = scaler.transform(input_array)
-    
-    # # Tahmin
-    # prediction = model.predict(input_scaled)
-    # prediction_proba = model.predict_proba(input_scaled)
-    
-    # Sonuçları gösterme
-    st.subheader("Bayes PCA Tahmin Sonucu")
-    if bayes_pca_prediction[0] == 1:
-        st.error(f"🚨 Diyabet Riski Yüksek (%{bayes_pca_prediction_proba[0][1]*100:.1f} olasılık)")
-    else:
-        st.success(f"✅ Diyabet Riski Düşük (%{bayes_pca_prediction_proba[0][0]*100:.1f} olasılık)")
-    
-    # Olasılık çubuğu
-    st.progress(bayes_pca_prediction_proba[0][1])
-    
-    st.subheader("Logistic Regression Tahmin Sonucu")
-    if lr_prediction[0] == 1:
-        st.error(f"🚨 Diyabet Riski Yüksek (%{lr_prediction_proba[0][1]*100:.1f} olasılık)")
-    else:
-        st.success(f"✅ Diyabet Riski Düşük (%{lr_prediction_proba[0][0]*100:.1f} olasılık)")
-    
-    # Olasılık çubuğu
-    st.progress(lr_prediction_proba[0][1])
+      # # Ölçeklendirme
+      # input_array = np.array(features).reshape(1, -1) # Shape: 1, 8
+      # input_scaled = scaler.transform(input_array)
+      
+      # # Tahmin
+      # prediction = model.predict(input_scaled)
+      # prediction_proba = model.predict_proba(input_scaled)
+      
+      # Sonuçları gösterme
+      st.subheader("Bayes PCA Tahmin Sonucu")
+      if bayes_pca_prediction[0] == 1:
+          st.error(f"🚨 Diyabet Riski Yüksek (%{bayes_pca_prediction_proba[0][1]*100:.1f} olasılık)")
+      else:
+          st.success(f"✅ Diyabet Riski Düşük (%{bayes_pca_prediction_proba[0][0]*100:.1f} olasılık)")
+      st.progress(bayes_pca_prediction_proba[0][1])
+      
+      
+      st.subheader("Logistic Regression Tahmin Sonucu")
+      if lr_prediction[0] == 1:
+          st.error(f"🚨 Diyabet Riski Yüksek (%{lr_prediction_proba[0][1]*100:.1f} olasılık)")
+      else:
+          st.success(f"✅ Diyabet Riski Düşük (%{lr_prediction_proba[0][0]*100:.1f} olasılık)")
+      st.progress(lr_prediction_proba[0][1])
+
+
+      st.subheader("Logistic Regression SMOTE Tahmin Sonucu")
+      if best_prediction[0] == 1:
+          st.error(f"🚨 Diyabet Riski Yüksek (%{best_prediction_proba[0][1]*100:.1f} olasılık)")
+      else:
+          st.success(f"✅ Diyabet Riski Düşük (%{best_prediction_proba[0][0]*100:.1f} olasılık)")
+      st.progress(best_prediction_proba[0][1])
