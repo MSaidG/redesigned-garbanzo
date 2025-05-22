@@ -114,7 +114,6 @@ if st.button("Predict"):
     bayes_pca_prediction = bayes_pca_model.predict(input_pca)
     
     with st.sidebar:
-      st.header("RESULTS")
       # st.success(f"Bayes PCA Tahmin: {bayes_pca_prediction[0]}")
       bayes_pca_prediction_proba = bayes_pca_model.predict_proba(input_pca)
       
